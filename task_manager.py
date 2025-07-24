@@ -1,11 +1,10 @@
 import sqlite3
 from datetime import datetime, timedelta
 
-DB_NAME = 'focusmate.db'
+DB_FILE = "tasks.db"
 
-# ---------- DB Initialization ----------
 def init_db():
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
     cur.execute('''
         CREATE TABLE IF NOT EXISTS tasks (
@@ -20,58 +19,61 @@ def init_db():
     conn.commit()
     conn.close()
 
-# ---------- Add Task ----------
-def add_task(username, task, due_date=None):
-    conn = sqlite3.connect(DB_NAME)
+def add_task(username, task, due_date):
+    conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
     cur.execute("INSERT INTO tasks (username, task, due_date) VALUES (?, ?, ?)",
                 (username, task, due_date))
     conn.commit()
     conn.close()
 
-# ---------- Get Tasks ----------
 def get_all_tasks(username):
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-    cur.execute("SELECT id, task, due_date, completed FROM tasks WHERE username = ? ORDER BY created_at DESC", (username,))
+    cur.execute("SELECT id, task, due_date, completed FROM tasks WHERE username=? ORDER BY due_date ASC", (username,))
     tasks = cur.fetchall()
     conn.close()
     return tasks
 
-# ---------- Mark Task Done ----------
-def mark_task_done(task_id, username):
-    conn = sqlite3.connect(DB_NAME)
+def mark_task_done(task_id):
+    conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-    cur.execute("UPDATE tasks SET completed = 1 WHERE id = ? AND username = ?", (task_id, username))
+    cur.execute("UPDATE tasks SET completed=1 WHERE id=?", (task_id,))
     conn.commit()
     conn.close()
 
-# ---------- Get Completion Stats ----------
-def get_completion_stats(username):
-    conn = sqlite3.connect(DB_NAME)
+def delete_task(task_id):
+    conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM tasks WHERE username = ?", (username,))
-    total = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM tasks WHERE username = ? AND completed = 1", (username,))
-    completed = cur.fetchone()[0]
+    cur.execute("DELETE FROM tasks WHERE id=?", (task_id,))
+    conn.commit()
     conn.close()
-    return total, completed
 
-# ---------- Streak Calculation ----------
 def calculate_streak(username):
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-    cur.execute("SELECT DISTINCT DATE(created_at) FROM tasks WHERE username = ? AND completed = 1 ORDER BY created_at DESC", (username,))
-    dates = [datetime.strptime(row[0], "%Y-%m-%d") for row in cur.fetchall()]
+    cur.execute('''
+        SELECT DATE(created_at) as day
+        FROM tasks
+        WHERE username=? AND completed=1
+        ORDER BY day DESC
+    ''', (username,))
+    rows = cur.fetchall()
     conn.close()
 
-    if not dates:
-        return 0
+    today = datetime.now().date()
+    streak = 0
+    prev_day = today
 
-    streak = 1
-    for i in range(1, len(dates)):
-        if dates[i - 1] - dates[i] == timedelta(days=1):
+    for row in rows:
+        task_day = datetime.strptime(row[0], '%Y-%m-%d').date()
+        if task_day == prev_day:
             streak += 1
+            prev_day -= timedelta(days=1)
+        elif task_day == prev_day - timedelta(days=1):
+            streak += 1
+            prev_day = task_day
         else:
             break
+
     return streak
