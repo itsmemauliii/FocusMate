@@ -1,11 +1,17 @@
-from textblob import TextBlob
+import spacy
+from dateparser import parse
 
-def extract_task_details(text):
-    # Naive NLP approach – look for "on <day>" or "by <date>"
-    blob = TextBlob(text)
-    due = None
-    if " on " in text:
-        due = text.split(" on ")[-1]
-    elif " by " in text:
-        due = text.split(" by ")[-1]
-    return blob.sentences[0], due
+nlp = spacy.load("en_core_web_sm")
+
+def parse_task_input(text):
+    doc = nlp(text)
+    task = text
+    date = None
+
+    for ent in doc.ents:
+        if ent.label_ in ["DATE", "TIME"]:
+            date = parse(ent.text)
+            task = text.replace(ent.text, "").strip()
+            break
+
+    return task, date.strftime("%Y-%m-%d") if date else None
