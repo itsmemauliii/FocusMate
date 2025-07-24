@@ -49,12 +49,12 @@ def add_task(username, task_input):
     conn.close()
 
 def get_all_tasks(username):
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect("data.db")
     c = conn.cursor()
-    c.execute("SELECT id, task, due_date, completed FROM tasks WHERE username = ?", (username,))
-    tasks = c.fetchall()
+    c.execute("SELECT id, title, due_date, completed FROM tasks WHERE username=?", (username,))
+    data = c.fetchall()
     conn.close()
-    return tasks
+    return data
 
 def mark_task_done(task_id):
     conn = sqlite3.connect(DB_NAME)
