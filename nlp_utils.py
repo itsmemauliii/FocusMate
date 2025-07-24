@@ -1,17 +1,17 @@
 import spacy
-from dateparser import parse
+from spacy.cli import download
 
-nlp = spacy.load("en_core_web_sm")
+try:
+    nlp = spacy.load("en_core_web_sm")
+except OSError:
+    download("en_core_web_sm")
+    nlp = spacy.load("en_core_web_sm")
 
 def parse_task_input(text):
     doc = nlp(text)
-    task = text
-    date = None
-
-    for ent in doc.ents:
-        if ent.label_ in ["DATE", "TIME"]:
-            date = parse(ent.text)
-            task = text.replace(ent.text, "").strip()
-            break
-
-    return task, date.strftime("%Y-%m-%d") if date else None
+    tasks = []
+    for sent in doc.sents:
+        task = sent.text.strip()
+        if task:
+            tasks.append(task)
+    return tasks
