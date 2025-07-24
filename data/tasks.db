@@ -1,0 +1,30 @@
+import sqlite3
+import os
+
+# Ensure the 'data' directory exists
+os.makedirs("data", exist_ok=True)
+
+# Path to the database file
+db_path = "data/tasks.db"
+
+# Connect to the SQLite database (will create if not exists)
+conn = sqlite3.connect(db_path)
+cursor = conn.cursor()
+
+# Drop the existing tasks table if needed (for clean reset)
+cursor.execute("DROP TABLE IF EXISTS tasks")
+
+# Create the tasks table with correct schema
+cursor.execute("""
+CREATE TABLE tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task TEXT NOT NULL,
+    due_date TEXT,
+    completed BOOLEAN NOT NULL DEFAULT 0
+)
+""")
+
+conn.commit()
+conn.close()
+
+db_path  # Return path to confirm creation location
