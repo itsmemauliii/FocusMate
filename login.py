@@ -1,31 +1,33 @@
 import streamlit as st
-import hashlib
-import sqlite3
 
-def make_hashes(password):
-    return hashlib.sha256(str.encode(password)).hexdigest()
+# Hardcoded user data for demo (you can hook it to SQLite or Firebase later)
+users = {
+    "mauli@example.com": {"password": "focus123"},
+    "demo@example.com": {"password": "test123"}
+}
 
-def check_hashes(password, hashed_text):
-    return hashed_text == hashlib.sha256(str.encode(password)).hexdigest()
+def login_signup():
+    st.title("🔐 Login / Signup to FocusMate")
 
-def create_users_table():
-    conn = sqlite3.connect('data/users.db')
-    c = conn.cursor()
-    c.execute('CREATE TABLE IF NOT EXISTS users(username TEXT, password TEXT)')
-    conn.commit()
-    conn.close()
+    tab1, tab2 = st.tabs(["Login", "Signup"])
 
-def add_user(username, password):
-    conn = sqlite3.connect('data/users.db')
-    c = conn.cursor()
-    c.execute('INSERT INTO users(username, password) VALUES (?, ?)', (username, password))
-    conn.commit()
-    conn.close()
+    with tab1:
+        email = st.text_input("Email", key="login_email")
+        password = st.text_input("Password", type="password", key="login_pass")
+        if st.button("Login"):
+            if email in users and users[email]["password"] == password:
+                st.success("Logged in successfully!")
+                st.session_state.logged_in = True
+                st.rerun()
+            else:
+                st.error("Invalid credentials. Try again.")
 
-def login_user(username, password):
-    conn = sqlite3.connect('data/users.db')
-    c = conn.cursor()
-    c.execute('SELECT * FROM users WHERE username = ? AND password = ?', (username, password))
-    data = c.fetchall()
-    conn.close()
-    return data
+    with tab2:
+        new_email = st.text_input("New Email", key="signup_email")
+        new_password = st.text_input("New Password", type="password", key="signup_pass")
+        if st.button("Sign Up"):
+            if new_email in users:
+                st.warning("User already exists.")
+            else:
+                users[new_email] = {"password": new_password}
+                st.success("Account created. You can now login.")
