@@ -1,0 +1,14 @@
+streamlit
+sqlite3
+textblob
+spacy
+smtplib
+email-validator
+schedule
+matplotlib
+pandas
+seaborn
+streamlit_calendar
+streamlit_option_menu
+streamlit_extras
+streamlit_authenticator
