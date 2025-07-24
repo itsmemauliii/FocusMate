@@ -1,7 +1,4 @@
 streamlit
 textblob
-spacy
-dateparser
 pandas
 matplotlib
-altair
