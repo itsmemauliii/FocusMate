@@ -2,6 +2,8 @@ import streamlit as st
 from login import login_signup
 from task_manager import *
 from nlp_utils import parse_task_input
+import spacy
+nlp = spacy.load("en_core_web_sm")
 
 st.set_page_config(page_title="FocusMate", page_icon="🧠")
 
