@@ -1,82 +1,75 @@
 import sqlite3
-from datetime import datetime, timedelta
 
-DB_PATH = "data/tasks.db"
+DB_NAME = "focusmate.db"
 
-# Initialize DB if not exists
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
-    cur.execute('''CREATE TABLE IF NOT EXISTS tasks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        task TEXT NOT NULL,
-        due_date TEXT NOT NULL,
-        status TEXT DEFAULT 'pending',
-        xp INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
-    )''')
+
+    # Create table if it doesn't exist
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task TEXT NOT NULL
+        )
+    ''')
+    conn.commit()
+
+    # Patch schema to add new columns safely
+    patch_schema(conn)
+
+    conn.close()
+
+
+def patch_schema(conn):
+    cur = conn.cursor()
+    # Try to add new columns. Ignore errors if they already exist.
+    try:
+        cur.execute("ALTER TABLE tasks ADD COLUMN due_date TEXT")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        cur.execute("ALTER TABLE tasks ADD COLUMN completed INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        cur.execute("ALTER TABLE tasks ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP")
+    except sqlite3.OperationalError:
+        pass
+
+    conn.commit()
+
+
+def add_task(task, due_date=None):
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+    cur.execute("INSERT INTO tasks (task, due_date, completed) VALUES (?, ?, ?)", (task, due_date, 0))
     conn.commit()
     conn.close()
 
-init_db()
-
-def add_task(task, due_date):
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("INSERT INTO tasks (task, due_date) VALUES (?, ?)", (task, due_date))
-    conn.commit()
-    conn.close()
-
-def mark_task_done(task):
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("UPDATE tasks SET status='done', xp = xp + 5 WHERE task=?", (task,))
-    conn.commit()
-    conn.close()
-
-def delete_task(task):
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("DELETE FROM tasks WHERE task=?", (task,))
-    conn.commit()
-    conn.close()
 
 def get_all_tasks():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
-    cur.execute("SELECT * FROM tasks ORDER BY due_date ASC")
-    rows = cur.fetchall()
+    cur.execute("SELECT id, task, due_date, completed, created_at FROM tasks")
+    tasks = cur.fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    return tasks
 
-def get_completed_today():
-    today = datetime.now().strftime("%Y-%m-%d")
-    conn = sqlite3.connect(DB_PATH)
+
+def update_task_status(task_id, completed):
+    conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM tasks WHERE status='done' AND due_date=?", (today,))
-    count = cur.fetchone()[0]
+    cur.execute("UPDATE tasks SET completed = ? WHERE id = ?", (completed, task_id))
+    conn.commit()
     conn.close()
-    return count
 
-def get_task_summary():
-    conn = sqlite3.connect(DB_PATH)
-    df = conn.execute("SELECT due_date, status FROM tasks").fetchall()
-    conn.close()
-    return df
 
-def calculate_streak():
-    conn = sqlite3.connect(DB_PATH)
+def delete_task(task_id):
+    conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
-    streak = 0
-    today = datetime.now().date()
-    for i in range(0, 10):
-        day = (today - timedelta(days=i)).strftime("%Y-%m-%d")
-        cur.execute("SELECT COUNT(*) FROM tasks WHERE due_date=? AND status='done'", (day,))
-        count = cur.fetchone()[0]
-        if count > 0:
-            streak += 1
-        else:
-            break
+    cur.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+    conn.commit()
     conn.close()
-    return streak
