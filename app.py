@@ -1,63 +1,73 @@
-# app.py
-
 import streamlit as st
-from chatbot import process_input
-from task_manager import get_all_tasks
+from auth import signup, login
+from task_manager import add_task, get_all_tasks, mark_task_done, delete_task
 from visualize import show_charts
-from streaks import get_streak_badge
-from calendar_view import show_calendar
-from login import login_signup
+from db import init_db
+from nlp_utils import extract_task_details
 
-# -------------- App Config --------------
-st.set_page_config(page_title="FocusMate ✨", layout="wide")
+st.set_page_config(page_title="FocusMate", layout="centered")
+init_db()
 
-# -------------- Session Login Check --------------
+st.title("🎯 FocusMate – NLP Task Manager")
+
+# Session State
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
+if 'username' not in st.session_state:
+    st.session_state.username = None
 
+# Login / Signup UI
 if not st.session_state.logged_in:
-    login_signup()
-    st.stop()
+    mode = st.selectbox("Login or Sign up", ["Login", "Sign up"])
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
 
-# -------------- Header Section --------------
-st.title("🌟 Welcome to FocusMate")
-st.markdown("Type tasks like: `Add Study ML on Sunday` or `Mark Submit report as done`")
+    if st.button("Submit"):
+        if mode == "Login":
+            if login(username, password):
+                st.success("Logged in!")
+                st.session_state.logged_in = True
+                st.session_state.username = username
+            else:
+                st.error("Invalid credentials")
+        else:
+            if signup(username, password):
+                st.success("Signup successful, now login.")
+            else:
+                st.warning("Username already exists.")
+else:
+    st.sidebar.title(f"👋 Welcome, {st.session_state.username}")
+    st.sidebar.button("Logout", on_click=lambda: st.session_state.update(logged_in=False))
 
-# -------------- NLP Input Section --------------
-user_input = st.text_input("🔊 What would you like to do today?")
-if user_input:
-    try:
-        response = process_input(user_input)
-        st.success(response)
-    except Exception as e:
-        st.error(f"Oops! Something went wrong: {e}")
+    st.subheader("📝 Add a new task (natural language input)")
+    task_input = st.text_input("E.g. 'Study ML on Friday'")
 
-# -------------- Task View Section --------------
-st.subheader("📅 Your Tasks")
-try:
-    tasks = get_all_tasks()
-    if tasks:
-        for task in tasks:
-            status_icon = "✅" if task['status'] == 'done' else "🔘"
-            st.markdown(f"- {status_icon} **{task['task']}** → Due: {task['due_date']}")
-    else:
-        st.info("No tasks yet. Add some!")
-except Exception as e:
-    st.error(f"Couldn't load tasks: {e}")
+    if st.button("Add Task"):
+        sentence, due = extract_task_details(task_input)
+        if due:
+            add_task(st.session_state.username, sentence, due)
+            st.success("Task added!")
+        else:
+            st.warning("Couldn't detect date. Try saying 'on Friday' or 'by 2025-07-25'")
 
-# -------------- Charts Section --------------
-st.subheader("🌈 Your Progress")
-show_charts()
+    st.divider()
+    st.subheader("📋 Your Tasks")
+    tasks = get_all_tasks(st.session_state.username)
+    for task in tasks:
+        tid, _, content, due, done = task
+        col1, col2, col3 = st.columns([3, 2, 1])
+        with col1:
+            st.write(f"**{content}** _(Due: {due})_")
+        with col2:
+            if not done:
+                if st.button("✅ Done", key=f"done_{tid}"):
+                    mark_task_done(tid)
+                    st.experimental_rerun()
+        with col3:
+            if st.button("🗑️ Delete", key=f"del_{tid}"):
+                delete_task(tid)
+                st.experimental_rerun()
 
-# -------------- Streak & Badge Section --------------
-st.subheader("🥇 Your Streaks & Badges")
-try:
-    streak, badge = get_streak_badge()
-    st.write(f"**Current Streak:** `{streak}` days")
-    st.write(f"**Badge:** `{badge}`")
-except:
-    st.info("No streak data yet. Complete a task to start tracking!")
-
-# -------------- Calendar View Section --------------
-st.subheader("🗓️ Calendar View")
-show_calendar()
+    st.divider()
+    st.subheader("📊 Your Progress")
+    show_charts(st.session_state.username)
