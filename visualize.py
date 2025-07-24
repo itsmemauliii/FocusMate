@@ -7,7 +7,7 @@ DB_PATH = "data/tasks.db"
 
 def show_charts():
     conn = sqlite3.connect(DB_PATH)
-    df = pd.read_sql_query("SELECT due_date, status FROM tasks", conn)
+    df = pd.read_sql_query("SELECT due_date, completed as status FROM tasks", conn)
     conn.close()
 
     if df.empty:
