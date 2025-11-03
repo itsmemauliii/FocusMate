@@ -115,6 +115,3 @@ If no date is detected, the app politely asks for one
 * Data Science & AI Enthusiast
 * [LinkedIn](https://linkedin.com/in/maulipatel)
 * [maulipatel@example.com](mailto:maulipatel@example.com)
-
-
-Would you like me to make a **README badge header** (e.g., `![Python](...) ![Streamlit](...) ![spaCy](...)`) and a **screenshot/demo section** with a fake UI preview image link? It makes your repo pop visually.
